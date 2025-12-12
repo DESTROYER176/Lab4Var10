@@ -1,0 +1,93 @@
+import logging
+from datetime import datetime, timedelta
+from aiogram import types
+
+from database import Database
+from api_client import BasketballAPI
+from keyboards import get_main_keyboard, get_settings_keyboard
+
+logging.basicConfig(level=logging.INFO)
+
+db = None
+api_client = None
+
+
+def init_handlers(database: Database, api: BasketballAPI):
+    global db, api_client
+    db = database
+    api_client = api
+
+
+async def start_command(message: types.Message):
+    try:
+        await message.answer(
+            "🏀 Привет! Я бот для отслеживания баскетбольных матчей NBA.\n\n"
+            "Доступные функции:\n"
+            "• 🎯 Игры сегодня - расписание на сегодня\n"
+            "• 📅 Календарь игр - расписание на неделю\n"
+            "• 🏀 Моя команда - информация о вашей команде\n"
+            "• ⚙️ Настройки - настройки бота\n\n"
+            "Выберите действие:",
+            reply_markup=get_main_keyboard()
+        )
+    except Exception as e:
+        logging.error(f"Error in start_command: {e}")
+        await message.answer("Произошла ошибка. Попробуйте позже.")
+
+
+async def games_today(message: types.Message):
+    try:
+        await message.answer("📊 Загружаю игры на сегодня...")
+        data = api_client.get_games_today()
+
+        if not data or 'data' not in data or len(data['data']) == 0:
+            await message.answer("На сегодня игр нет! 🏀")
+            return
+
+        response = "🏀 Игры на сегодня:\n\n"
+
+        for game in data['data'][:5]:  # Ограничим 5 играми
+            home_team = game['home_team']['full_name']
+            visitor_team = game['visitor_team']['full_name']
+            home_score = game['home_team_score']
+            visitor_score = game['visitor_team_score']
+            status = game['status']
+
+            if status == 'Final' and home_score is not None:
+                result = f"🏁 {home_score} - {visitor_score}"
+            elif status == 'In Progress':
+                result = f"▶️ {home_score or '0'} - {visitor_score or '0'}"
+            else:
+                result = "⏳ Запланирована"
+
+            response += f"• {home_team} vs {visitor_team}\n"
+            response += f"  {result} ({status})\n\n"
+
+        await message.answer(response)
+
+    except Exception as e:
+        logging.error(f"Error in games_today: {e}")
+        await message.answer("Ошибка при получении данных. Используются тестовые данные.")
+
+
+async def my_team(message: types.Message):
+    try:
+        settings = db.get_user_settings(message.from_user.id)
+
+        if not settings or not settings['favorite_team']:
+            await message.answer(
+                "❌ У вас не выбрана любимая команда.\n\n"
+                "Перейдите в ⚙️ Настройки → ⭐ Выбрать любимую команду",
+                reply_markup=get_main_keyboard()
+            )
+            return
+
+        team_name = settings['favorite_team_name'] or "Ваша команда"
+        await message.answer(f"⭐ Ваша любимая команда: {team_name}\n\n"
+                             f"Используйте функцию '🎯 Игры сегодня' или '📅 Календарь игр' "
+                             f"для просмотра матчей.",
+                             reply_markup=get_main_keyboard())
+
+    except Exception as e:
+        logging.error(f"Error in my_team: {e}")
+        await message.answer("Ошибка при получении информации о команде.")
