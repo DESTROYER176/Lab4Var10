@@ -1,0 +1,42 @@
+from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
+
+def get_main_keyboard():
+    keyboard = ReplyKeyboardMarkup(
+        keyboard=[
+            [KeyboardButton(text='🎯 Игры сегодня'), KeyboardButton(text='📅 Календарь игр')],
+            [KeyboardButton(text='🏀 Моя команда'), KeyboardButton(text='⚙️ Настройки')]
+        ],
+        resize_keyboard=True
+    )
+    return keyboard
+
+def get_settings_keyboard():
+    keyboard = ReplyKeyboardMarkup(
+        keyboard=[
+            [KeyboardButton(text='⭐ Выбрать любимую команду')],
+            [KeyboardButton(text='🔔 Управление уведомлениями')],
+            [KeyboardButton(text='↩️ Назад')]
+        ],
+        resize_keyboard=True
+    )
+    return keyboard
+
+def get_teams_regular_keyboard():
+    keyboard = ReplyKeyboardMarkup(
+        keyboard=[
+            [KeyboardButton(text='1️⃣ Лос-Анджелес Лейкерс')],
+            [KeyboardButton(text='2️⃣ Голден Стэйт Уорриорз')],
+            [KeyboardButton(text='3️⃣ Бостон Селтикс')],
+            [KeyboardButton(text='4️⃣ Чикаго Буллз')],
+            [KeyboardButton(text='5️⃣ Майами Хит')],
+            [KeyboardButton(text='6️⃣ Даллас Маверикс')],
+            [KeyboardButton(text='7️⃣ Денвер Наггетс')],
+            [KeyboardButton(text='8️⃣ Финикс Санз')],
+            [KeyboardButton(text='9️⃣ Милуоки Бакс')],
+            [KeyboardButton(text='🔟 Филадельфия 76ers')],
+            [KeyboardButton(text='↩️ Назад в настройки')]
+        ],
+        resize_keyboard=True,
+        row_width=1
+    )
+    return keyboard
