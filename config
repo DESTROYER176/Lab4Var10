@@ -1,0 +1,8 @@
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
+
+API_TOKEN = "8306407460:AAF_6S4NDqqRaFa6ejpL2yWXpY3AgYSm_kk"
+API_URL = "https://api.sportsdata.io/v3/nba"
+DB_NAME = "users.db"
