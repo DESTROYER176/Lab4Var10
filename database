@@ -1,0 +1,51 @@
+import sqlite3
+from datetime import datetime
+
+
+class Database:
+    def __init__(self, db_name='users.db'):
+        self.conn = sqlite3.connect(db_name, check_same_thread=False)
+        self.create_tables()
+        print(f"✅ База данных подключена: {db_name}")
+
+    def create_tables(self):
+        cursor = self.conn.cursor()
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS user_settings (
+                user_id INTEGER PRIMARY KEY,
+                favorite_team TEXT,
+                favorite_team_name TEXT,
+                notifications_enabled INTEGER DEFAULT 1,
+                last_updated TIMESTAMP
+            )
+        ''')
+        self.conn.commit()
+        print("✅ Таблица user_settings создана/проверена")
+
+    def save_user_settings(self, user_id, favorite_team=None, favorite_team_name=None, notifications=True):
+        cursor = self.conn.cursor()
+        cursor.execute('''
+            INSERT OR REPLACE INTO user_settings 
+            (user_id, favorite_team, favorite_team_name, notifications_enabled, last_updated)
+            VALUES (?, ?, ?, ?, ?)
+        ''', (user_id, favorite_team, favorite_team_name, 1 if notifications else 0, datetime.now()))
+        self.conn.commit()
+        print(f"✅ Настройки сохранены для user_id={user_id}, команда={favorite_team_name}")
+        return True
+
+    def get_user_settings(self, user_id):
+        cursor = self.conn.cursor()
+        cursor.execute('SELECT * FROM user_settings WHERE user_id = ?', (user_id,))
+        result = cursor.fetchone()
+        if result:
+            return {
+                'user_id': result[0],
+                'favorite_team': result[1],
+                'favorite_team_name': result[2],
+                'notifications_enabled': bool(result[3]),
+                'last_updated': result[4]
+            }
+        return None
+
+    def close(self):
+        self.conn.close()
