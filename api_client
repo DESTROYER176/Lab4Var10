@@ -1,0 +1,194 @@
+import requests
+import os
+from datetime import datetime, timedelta
+import logging
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+
+class BasketballAPI:
+    def __init__(self):
+        self.base_url = "https://api.sportsdata.io/v3/nba"
+        self.api_key = os.getenv('SPORTSDATA_API_KEY', 'YOUR_FREE_API_KEY_HERE')
+
+        self.use_mock_data = self.api_key == 'YOUR_FREE_API_KEY_HERE'
+
+    def _get_mock_games_today(self):
+        today = datetime.now()
+
+        mock_games = [
+            {
+                'GameID': 1,
+                'DateTime': today.replace(hour=19, minute=30).isoformat() + 'Z',
+                'HomeTeam': 'Los Angeles Lakers',
+                'AwayTeam': 'Golden State Warriors',
+                'HomeTeamScore': 112,
+                'AwayTeamScore': 108,
+                'Status': 'Final',
+                'Quarter': '4',
+                'TimeRemaining': '00:00'
+            },
+            {
+                'GameID': 2,
+                'DateTime': today.replace(hour=22, minute=0).isoformat() + 'Z',
+                'HomeTeam': 'Boston Celtics',
+                'AwayTeam': 'Miami Heat',
+                'HomeTeamScore': 105,
+                'AwayTeamScore': 102,
+                'Status': 'Final',
+                'Quarter': '4',
+                'TimeRemaining': '00:00'
+            },
+            {
+                'GameID': 3,
+                'DateTime': (today + timedelta(hours=1)).isoformat() + 'Z',
+                'HomeTeam': 'Chicago Bulls',
+                'AwayTeam': 'Brooklyn Nets',
+                'HomeTeamScore': None,
+                'AwayTeamScore': None,
+                'Status': 'Scheduled',
+                'Quarter': None,
+                'TimeRemaining': None
+            }
+        ]
+
+        formatted_games = []
+        for game in mock_games:
+            formatted_games.append({
+                'GameID': game['GameID'],
+                'DateTime': game['DateTime'],
+                'date': game['DateTime'],
+                'home_team': {'full_name': game['HomeTeam'], 'abbreviation': game['HomeTeam'][:3].upper()},
+                'visitor_team': {'full_name': game['AwayTeam'], 'abbreviation': game['AwayTeam'][:3].upper()},
+                'home_team_score': game['HomeTeamScore'],
+                'visitor_team_score': game['AwayTeamScore'],
+                'status': game['Status'],
+                'period': game['Quarter'] or 0,
+                'time': game['TimeRemaining'] or 'Scheduled'
+            })
+
+        return {'data': formatted_games}
+
+    def get_games_today(self):
+        try:
+            if self.use_mock_data:
+                logger.info("Используем mock данные для тестирования")
+                return self._get_mock_games_today()
+
+            today = datetime.now().strftime('%Y-%m-%d')
+            url = f"{self.base_url}/scores/json/GamesByDate/{today}"
+            headers = {'Ocp-Apim-Subscription-Key': self.api_key}
+
+            response = requests.get(url, headers=headers)
+            response.raise_for_status()
+
+            data = response.json()
+            formatted_games = []
+
+            for game in data:
+                formatted_games.append({
+                    'GameID': game.get('GameID'),
+                    'DateTime': game.get('DateTime'),
+                    'date': game.get('DateTime'),
+                    'home_team': {
+                        'full_name': game.get('HomeTeam'),
+                        'abbreviation': game.get('HomeTeam')[:3].upper() if game.get('HomeTeam') else ''
+                    },
+                    'visitor_team': {
+                        'full_name': game.get('AwayTeam'),
+                        'abbreviation': game.get('AwayTeam')[:3].upper() if game.get('AwayTeam') else ''
+                    },
+                    'home_team_score': game.get('HomeTeamScore'),
+                    'visitor_team_score': game.get('AwayTeamScore'),
+                    'status': game.get('Status'),
+                    'period': game.get('Quarter') or 0,
+                    'time': game.get('TimeRemaining') or 'Scheduled'
+                })
+
+            return {'data': formatted_games}
+
+        except Exception as e:
+            logger.error(f"Ошибка в get_games_today: {e}")
+            return self._get_mock_games_today()
+
+    def get_games_by_date(self, date_str):
+        try:
+            if self.use_mock_data:
+                date_obj = datetime.strptime(date_str, '%Y-%m-%d')
+                mock_games = self._get_mock_games_today()
+
+                for game in mock_games['data']:
+                    game['DateTime'] = date_obj.isoformat() + 'Z'
+                    game['date'] = date_obj.isoformat() + 'Z'
+
+                return mock_games
+
+            url = f"{self.base_url}/scores/json/GamesByDate/{date_str}"
+            headers = {'Ocp-Apim-Subscription-Key': self.api_key}
+
+            response = requests.get(url, headers=headers)
+            response.raise_for_status()
+
+            data = response.json()
+            formatted_games = []
+
+            for game in data:
+                formatted_games.append({
+                    'GameID': game.get('GameID'),
+                    'DateTime': game.get('DateTime'),
+                    'date': game.get('DateTime'),
+                    'home_team': {
+                        'full_name': game.get('HomeTeam'),
+                        'abbreviation': game.get('HomeTeam')[:3].upper() if game.get('HomeTeam') else ''
+                    },
+                    'visitor_team': {
+                        'full_name': game.get('AwayTeam'),
+                        'abbreviation': game.get('AwayTeam')[:3].upper() if game.get('AwayTeam') else ''
+                    },
+                    'home_team_score': game.get('HomeTeamScore'),
+                    'visitor_team_score': game.get('AwayTeamScore'),
+                    'status': game.get('Status'),
+                    'period': game.get('Quarter') or 0,
+                    'time': game.get('TimeRemaining') or 'Scheduled'
+                })
+
+            return {'data': formatted_games}
+
+        except Exception as e:
+            logger.error(f"Ошибка в get_games_by_date: {e}")
+            return {'data': []}
+
+    def get_teams(self):
+        teams = [
+            {'id': 1, 'full_name': 'Los Angeles Lakers', 'abbreviation': 'LAL'},
+            {'id': 2, 'full_name': 'Golden State Warriors', 'abbreviation': 'GSW'},
+            {'id': 3, 'full_name': 'Boston Celtics', 'abbreviation': 'BOS'},
+            {'id': 4, 'full_name': 'Chicago Bulls', 'abbreviation': 'CHI'},
+            {'id': 5, 'full_name': 'Miami Heat', 'abbreviation': 'MIA'},
+            {'id': 6, 'full_name': 'Dallas Mavericks', 'abbreviation': 'DAL'},
+            {'id': 7, 'full_name': 'Denver Nuggets', 'abbreviation': 'DEN'},
+            {'id': 8, 'full_name': 'Phoenix Suns', 'abbreviation': 'PHX'},
+            {'id': 9, 'full_name': 'Milwaukee Bucks', 'abbreviation': 'MIL'},
+            {'id': 10, 'full_name': 'Philadelphia 76ers', 'abbreviation': 'PHI'},
+        ]
+        return {'data': teams}
+
+    def get_games_by_team(self, team_id):
+        try:
+            mock_games = self._get_mock_games_today()
+
+            if team_id == '1':
+                filtered = [g for g in mock_games['data'] if
+                            'Lakers' in g['home_team']['full_name'] or 'Lakers' in g['visitor_team']['full_name']]
+            elif team_id == '2':
+                filtered = [g for g in mock_games['data'] if
+                            'Warriors' in g['home_team']['full_name'] or 'Warriors' in g['visitor_team']['full_name']]
+            else:
+                filtered = mock_games['data'][:2]  # Возвращаем первые 2 игры
+
+            return {'data': filtered}
+
+        except Exception as e:
+            logger.error(f"Ошибка в get_games_by_team: {e}")
+            return {'data': []}
